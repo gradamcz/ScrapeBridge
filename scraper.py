@@ -41,7 +41,7 @@ urls = [
 "https://www.waterwayguide.com/bridge/3-185/edison-bridges",
 "https://www.waterwayguide.com/bridge/3-184/scl-railroad-bridge",
 "https://www.waterwayguide.com/bridge/3-183/i-75-bridges",
-"https://www.waterwayguide.com/bridge//3-182/wilson-pigott-drawbridge",
+"https://www.waterwayguide.com/bridge/3-182/wilson-pigott-drawbridge",
 "https://www.waterwayguide.com/bridge/3-180/alva-drawbridge",
 "https://www.waterwayguide.com/bridge/3-179/fort-denaud-bridge",
 "https://www.waterwayguide.com/bridge/3-178/la-belle-sr-29-bridge",
