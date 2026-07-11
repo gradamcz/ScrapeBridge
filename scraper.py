@@ -1,4 +1,4 @@
-import requests
+import urllib.request
 from bs4 import BeautifulSoup
 import csv
 import time
@@ -66,29 +66,40 @@ urls = [
 
 fields = ["Bridge Name", "Mile Marker", "Lat / Lon", "Bridge Type", "Vertical Clearance (Closed)", "Horizontal Clearance", "Schedule"]
 
+# Use regular headers to disguise the automation
+headers = {
+    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+    'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+    'Accept-Language': 'en-US,en;q=0.5'
+}
+
 with open("bridge_data.csv", mode="w", newline="", encoding="utf-8") as file:
     writer = csv.DictWriter(file, fieldnames=fields)
     writer.writeheader()
 
     for url in urls:
         try:
-            response = requests.get(url, headers={"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"}, timeout=15)
-            if response.status_code != 200:
-                print(f"Failed to load {url} (Status: {response.status_code})")
-                continue
+            # Clean up double slashes just in case
+            url = url.replace("bridge//", "bridge/")
+            
+            # Send a disguised request
+            req = urllib.request.Request(url, headers=headers)
+            
+            with urllib.request.urlopen(req, timeout=15) as response:
+                html_content = response.read()
 
-            soup = BeautifulSoup(response.text, 'html.parser')
+            soup = BeautifulSoup(html_content, 'html.parser')
             bridge_info = {f: "N/A" for f in fields}
 
-            # 1. Grab Bridge Name precisely from the main page title
-            if soup.find('h1'):
-                name = soup.find('h1').text.strip()
+            # 1. Grab Bridge Name
+            name_tag = soup.find('h1') or soup.find('h2')
+            if name_tag:
+                name = name_tag.text.strip()
             elif soup.title:
                 name = soup.title.text.split('|')[0].strip()
             else:
                 name = "Unknown Bridge"
 
-            # Clean up potential extra wording from title tags
             bridge_info["Bridge Name"] = name.replace("Bridge Details:", "").replace("Bridge", "").strip() + " Bridge"
 
             # 2. Extract layout fields
@@ -116,10 +127,11 @@ with open("bridge_data.csv", mode="w", newline="", encoding="utf-8") as file:
             writer.writerow(bridge_info)
             print(f"Successfully processed: {bridge_info['Bridge Name']}")
 
-            # Pause for half a second to be polite to the server
-            time.sleep(0.5)
+            # Pause for 1 full second between sites to bypass rate limits
+            time.sleep(1.0)
 
         except Exception as e:
-            print(f"Error scraping {url}: {e}")
+            print(f"Skipping {url} due to error: {e}")
+            continue
 
 print("Scraping finished!")
