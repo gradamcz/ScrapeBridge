@@ -23,17 +23,21 @@ with open("bridge_data.csv", mode="w", newline="", encoding="utf-8") as file:
             soup = BeautifulSoup(response.text, 'html.parser')
             bridge_info = {f: "N/A" for f in fields}
             
-            # 1. Grab Bridge Name from the main heading
-            name_tag = soup.find('h2')
-            if not name_tag:
-                name_tag = soup.find('h1')
-            bridge_info["Bridge Name"] = name_tag.text.strip() if name_tag else "Unknown Bridge"
+            # 1. Grab Bridge Name precisely from the main page title
+            if soup.find('h1'):
+                name = soup.find('h1').text.strip()
+            elif soup.title:
+                name = soup.title.text.split('|')[0].strip() # Cleans up "Title | Waterway Guide" strings
+            else:
+                name = "Unknown Bridge"
             
-            # 2. Look inside the specific list items (li) or divs on the page
+            # Clean up potential extra wording from title tags
+            bridge_info["Bridge Name"] = name.replace("Bridge Details:", "").replace("Bridge", "").strip() + " Bridge"
+            
+            # 2. Extract layout fields
             for element in soup.find_all(['li', 'div', 'p']):
                 text = " ".join(element.text.split())
                 
-                # Check for each field explicitly
                 if "Mile Marker" in text and ":" in text:
                     bridge_info["Mile Marker"] = text.split(":", 1)[1].strip()
                 elif "Lat / Lon" in text and ":" in text:
@@ -45,16 +49,12 @@ with open("bridge_data.csv", mode="w", newline="", encoding="utf-8") as file:
                 elif "Horizontal Clearance" in text and ":" in text:
                     bridge_info["Horizontal Clearance"] = text.split(":", 1)[1].strip()
                 elif "Schedule" in text and ":" in text:
-                    # Capture the text right after the schedule label
                     bridge_info["Schedule"] = text.split(":", 1)[1].strip()
 
-            # Fallback for Schedule if it is in an adjacent element
-            if bridge_info["Schedule"] == "N/A" or bridge_info["Schedule"] == "":
-                schedule_label = soup.find(text=lambda t: t and "Schedule" in t)
-                if schedule_label and schedule_label.parent:
-                    next_node = schedule_label.parent.find_next_sibling()
-                    if next_node:
-                        bridge_info["Schedule"] = next_node.text.strip()
+            # 3. Clean up the Schedule field
+            editors_note = "Editor's Note: Bridge schedules are subject to temporary change due to repairs, maintenance, events, etc. Check the Waterway Explorer for possible nav alerts."
+            if bridge_info["Schedule"] != "N/A":
+                bridge_info["Schedule"] = bridge_info["Schedule"].replace(editors_note, "").strip()
 
             writer.writerow(bridge_info)
             print(f"Successfully processed: {bridge_info['Bridge Name']}")
